@@ -75,6 +75,15 @@ App::App()
 
 
   // TODO: Initialize any additional resources you require here!
+  etna::create_program("local_shadertoy1", {LOCAL_SHADERTOY1_SHADERS_ROOT "toy.comp.spv"});
+  pipeline = etna::get_context().getPipelineManager().createComputePipeline("local_shadertoy1", {});
+  image = etna::get_context().createImage(etna::Image::CreateInfo{
+    .extent = vk::Extent3D{resolution.x, resolution.y, 1},
+    .name = "local_shadertoy1",
+    .format = vk::Format::eR8G8B8A8Unorm,
+    .imageUsage = vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eSampled |
+      vk::ImageUsageFlagBits::eStorage,
+  });
 }
 
 App::~App()
@@ -139,7 +148,48 @@ void App::drawFrame()
 
 
       // TODO: Record your commands here!
+      auto computeInfo = etna::get_shader_program("local_shadertoy1");
+      auto set = etna::create_descriptor_set(
+        computeInfo.getDescriptorLayoutId(0),
+        currentCmdBuf,
+        {
+          etna::Binding{0, image.genBinding(defaultSampler.get(), vk::ImageLayout::eGeneral)},
+        });
+      vk::DescriptorSet vkSet = set.getVkSet();
+      currentCmdBuf.bindPipeline(vk::PipelineBindPoint::eCompute, pipeline.getVkPipeline());
+      currentCmdBuf.bindDescriptorSets(
+        vk::PipelineBindPoint::eCompute, pipeline.getVkPipelineLayout(), 0, 1, &vkSet, 0, nullptr);
+      // currentCmdBuf.pushConstants(
+      //   pipeline.getVkPipelineLayout(), vk::ShaderStageFlagBits::eCompute, 0, sizeof(float), &frameTime);
+      etna::flush_barriers(currentCmdBuf);
+      currentCmdBuf.dispatch(resolution.x / 32 + 1, resolution.y / 32 + 1, 1);
 
+      etna::set_state(
+        currentCmdBuf,
+        image.get(),
+        vk::PipelineStageFlagBits2::eTransfer,
+        vk::AccessFlagBits2::eTransferRead,
+        vk::ImageLayout::eTransferDstOptimal,
+        vk::ImageAspectFlagBits::eColor);
+      etna::flush_barriers(currentCmdBuf);
+      currentCmdBuf.blitImage(
+        image.get(),
+        vk::ImageLayout::eTransferSrcOptimal,
+        backbuffer,
+        vk::ImageLayout::eTransferDstOptimal,
+        vk::ImageBlit {
+          .srcSubresource = {.aspectMask=vk::ImageAspectFlagBits::eColor, .layerCount=1,},
+          .srcOffsets = std::array<vk::Offset3D, 2> {
+            vk::Offset3D{},
+            vk::Offset3D{.x =static_cast<int32_t>(resolution.x), .y=static_cast<int32_t>(resolution.y), .z = 1}
+          },
+          .dstSubresource = {.aspectMask=vk::ImageAspectFlagBits::eColor, .layerCount=1},
+          .dstOffsets = std::array<vk::Offset3D, 2> {
+            vk::Offset3D{},
+            vk::Offset3D{.x =static_cast<int32_t>(resolution.x), .y=static_cast<int32_t>(resolution.y), .z = 1}
+          }
+        },
+        vk::Filter::eNearest);
 
       // At the end of "rendering", we are required to change how the pixels of the
       // swpchain image are laid out in memory to something that is appropriate
