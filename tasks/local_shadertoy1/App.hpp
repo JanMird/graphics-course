@@ -7,6 +7,8 @@
 
 #include "wsi/OsWindowingManager.hpp"
 
+#include <etna/Sampler.hpp>
+
 
 class App
 {
@@ -28,4 +30,8 @@ private:
 
   std::unique_ptr<etna::Window> vkWindow;
   std::unique_ptr<etna::PerFrameCmdMgr> commandManager;
+
+  etna::ComputePipeline pipeline;
+  etna::Image image;
+  etna::Sampler defaultSampler;
 };
