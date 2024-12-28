@@ -81,9 +81,7 @@ App::App()
     .extent = vk::Extent3D{resolution.x, resolution.y, 1},
     .name = "local_shadertoy1",
     .format = vk::Format::eR8G8B8A8Unorm,
-    .imageUsage = vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eSampled |
-      vk::ImageUsageFlagBits::eStorage,
-  });
+    .imageUsage = vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eStorage | vk::ImageUsageFlagBits::eTransferSrc});
 }
 
 App::~App()
@@ -169,7 +167,7 @@ void App::drawFrame()
         image.get(),
         vk::PipelineStageFlagBits2::eTransfer,
         vk::AccessFlagBits2::eTransferRead,
-        vk::ImageLayout::eTransferDstOptimal,
+        vk::ImageLayout::eTransferSrcOptimal,
         vk::ImageAspectFlagBits::eColor);
       etna::flush_barriers(currentCmdBuf);
       currentCmdBuf.blitImage(
